@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SUMO - Choques Definitivos</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
+body { background:#1a0a00; font-family:'Segoe UI',Arial,sans-serif; color:#fff; height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; touch-action:pan-x pan-y; }
+.screen { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; text-align:center; padding:20px; background:#1a0a00; z-index:10; }
+.screen.hidden { display:none; }
+h1 { font-size:clamp(3rem,12vw,6rem); color:#f5c518; text-shadow:4px 4px 0 #8B4513; letter-spacing:2px; }
+h2 { font-size:clamp(1.5rem,6vw,2.5rem); color:#f5c518; }
+p  { color:#c9a84c; line-height:1.8; font-size:clamp(.85rem,2.5vw,1rem); max-width:300px; margin:0 auto; }
+button { font-size:clamp(1rem,4vw,1.3rem); padding:12px 36px; border:none; border-radius:40px; cursor:pointer; font-weight:bold; transition:0.05s linear; }
+.btn-gold  { background:#f5c518; color:#3a1a00; box-shadow:0 5px 0 #8B4513; }
+.btn-green { background:#4caf50; color:#fff;    box-shadow:0 5px 0 #1b5e20; }
+button:active { transform:translateY(3px); box-shadow:none; }
+#game-screen { gap:6px; background:#1a0a00; }
+#hud { display:flex; justify-content:space-between; align-items:center; width:100%; max-width:500px; font-weight:bold; font-size:clamp(1rem,3.5vw,1.2rem); background:rgba(0,0,0,0.4); padding:6px 15px; border-radius:60px; backdrop-filter:blur(4px); }
+#hud .p1n{color:#e84040;} #hud .p2n{color:#4488ff;} #hud .mid{color:#f5c518; font-size:clamp(1.3rem,5vw,1.8rem); font-weight:bold; min-width:50px; }
+canvas { display:block; border-radius:50%; box-shadow:0 0 0 7px #8B4513,0 0 0 13px #5a2e00,0 8px 20px rgba(0,0,0,0.5); background:#e8c97a; }
+#mc { display:none; width:100%; max-width:500px; justify-content:space-between; margin-top:8px; gap:15px; }
+.dpad { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; background:rgba(0,0,0,0.3); border-radius:20px; padding:8px; }
+.db { width:52px; height:52px; background:rgba(30,30,40,0.9); border:1px solid rgba(255,215,0,0.5); border-radius:12px; color:#f5c518; font-size:1.5rem; display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; touch-action:manipulation; font-weight:bold; box-shadow:0 2px 5px black; transition:0.03s linear; }
+.db:active{background:#f5c518; color:#2a1a00; transform:scale(0.94);} .db.x{background:transparent;border-color:transparent;pointer-events:none;box-shadow:none;}
+.dl{color:#f5c518; font-weight:bold; font-size:.8rem; text-align:center; margin-bottom:5px; text-transform:uppercase; }
+@media (pointer:coarse),(max-width:600px){#mc{display:flex;}}
+#ann{position:fixed;top:38%;left:50%;transform:translate(-50%,-50%);font-size:clamp(2rem,8vw,3.5rem);font-weight:bold;color:#f5c518;text-shadow:3px 3px 0 #8B4513;pointer-events:none;opacity:0;transition:opacity .2s;z-index:99;white-space:nowrap;background:rgba(0,0,0,0.5);padding:8px 22px;border-radius:60px; backdrop-filter:blur(5px);}
+#ann.show{opacity:1;}
+.wname{font-size:clamp(1.8rem,7vw,2.5rem);font-weight:bold;margin-top:5px;}
+.wname.p1{color:#e84040;} .wname.p2{color:#4488ff;}
+.br{display:flex;gap:16px;flex-wrap:wrap;justify-content:center; margin-top:10px;}
+.footer-tip{ font-size:0.7rem; color:#b87c3a; margin-top:8px; max-width:280px; }
+</style>
+</head>
+<body>
+<div id="ann"></div>
+
+<div id="menu-screen" class="screen">
+  <h1>⚡ SUMO ⚡</h1>
+  <p><b style="color:#e84040">J1</b> — <b>W A S D</b> &nbsp;|&nbsp; <b style="color:#4488ff">J2</b> — <b>⬆️⬅️⬇️➡️</b><br><br>💥 <b>Empuja FUERA del círculo</b> 💥<br>📌 <b style="color:#f5c518">Choque frontal:</b> El más rápido expulsa al otro<br>🎯 ¡Velocidad + impacto = victoria!</p>
+  <button class="btn-gold" id="btn-start">🔰 ¡DO HYO! 🔰</button>
+  <div class="footer-tip">✦ Tácticas: ataca de costado o con embestida ✦</div>
+</div>
+
+<div id="game-screen" class="screen hidden">
+  <div id="hud">
+    <span class="p1n">🔴 SUMO ROJO</span>
+    <span class="mid" id="cd">3</span>
+    <span class="p2n">SUMO AZUL 🔵</span>
+  </div>
+  <canvas id="c"></canvas>
+  <div id="mc">
+    <div>
+      <div class="dl" style="color:#e84040">⚡ ROJO</div>
+      <div class="dpad">
+        <div class="db x"></div><div class="db" data-p="1" data-d="u">▲</div><div class="db x"></div>
+        <div class="db" data-p="1" data-d="l">◀</div><div class="db x"></div><div class="db" data-p="1" data-d="r">▶</div>
+        <div class="db x"></div><div class="db" data-p="1" data-d="d">▼</div><div class="db x"></div>
+      </div>
+    </div>
+    <div>
+      <div class="dl" style="color:#4488ff">💠 AZUL</div>
+      <div class="dpad">
+        <div class="db x"></div><div class="db" data-p="2" data-d="u">▲</div><div class="db x"></div>
+        <div class="db" data-p="2" data-d="l">◀</div><div class="db x"></div><div class="db" data-p="2" data-d="r">▶</div>
+        <div class="db x"></div><div class="db" data-p="2" data-d="d">▼</div><div class="db x"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="defeat-screen" class="screen hidden">
+  <div style="font-size:clamp(3rem,12vw,5rem)">🏆🎊</div>
+  <h2>¡VICTORIA!</h2>
+  <div class="wname" id="wname">Jugador 1</div>
+  <div class="br">
+    <button class="btn-green" id="btn-restart">💢 REVANCHA 💢</button>
+    <button class="btn-gold"  id="btn-menu">🏮 MENÚ</button>
+  </div>
+</div>
+
+<script>
+// ======================== CONFIGURACIÓN AVANZADA DE FÍSICA ========================
+// El problema original: cuando dos luchadores chocaban de frente con velocidades opuestas,
+// la transferencia de impulso era insuficiente, quedaban pegados y no salían despedidos.
+// SOLUCIÓN: implementación completa de colisión inelástica + impulso relativo + factor de empuje.
+// Ahora el que tiene mayor velocidad relativa empuja violentamente al otro.
+// Además el rozamiento del ring y la aceleración mejorados para sensación arcade pero justa.
+
+const canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
+let CX,CY,RING_R,PR; // radio del círculo y radio de los luchadores
+
+function resize(){
+  const mob=window.matchMedia('(pointer:coarse)').matches||window.innerWidth<700;
+  const avail=Math.min(window.innerWidth-30, window.innerHeight-60-(mob?180:0)-20);
+  const size=Math.max(240,Math.min(avail,500));
+  canvas.width=canvas.height=size;
+  CX=CY=size/2; 
+  RING_R=size/2-6;  // borde interno del dohyo
+  PR=Math.max(22,size*0.09); // tamaño de los luchadores (justo para colisión)
+}
+resize();
+window.addEventListener('resize',resize);
+
+// Controles teclado + móvil
+const keys={}, mob={1:{},2:{}};
+document.addEventListener('keydown',e=>{
+  keys[e.key]=true;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','W','s','S','a','A','d','D'].includes(e.key)) e.preventDefault();
+});
+document.addEventListener('keyup',e=>{ keys[e.key]=false; });
+
+// Captura botones táctiles/mouse
+document.querySelectorAll('.db[data-d]').forEach(btn=>{
+  const pi=btn.dataset.p, dir=btn.dataset.d;
+  const on=(e)=>{ e.preventDefault(); mob[pi][dir]=true; };
+  const off=(e)=>{ e.preventDefault(); mob[pi][dir]=false; };
+  btn.addEventListener('touchstart',on,{passive:false});
+  btn.addEventListener('touchend',off,{passive:false});
+  btn.addEventListener('touchcancel',off);
+  btn.addEventListener('mousedown',on);
+  btn.addEventListener('mouseup',off);
+  btn.addEventListener('mouseleave',off);
+});
+
+function getInput(i){
+  const m=mob[i+1];
+  if(i===0){
+    return { u: keys['w']||keys['W']||m.u, d: keys['s']||keys['S']||m.d, l: keys['a']||keys['A']||m.l, r: keys['d']||keys['D']||m.r };
+  } else {
+    return { u: keys['ArrowUp']||m.u, d: keys['ArrowDown']||m.d, l: keys['ArrowLeft']||m.l, r: keys['ArrowRight']||m.r };
+  }
+}
+
+// Parámetros físicos mejorados
+const ACCEL=0.32;      // aceleración por pulso (responde más rápido)
+const FRIC=0.94;       // fricción suave, mantiene inercia
+const BOUNCE_FACTOR=1.38;  // factor de empuje al chocar (para que salgan volando)
+const MIN_KNOCKOUT=1.9;    // velocidad mínima para que el expulsado salga con fuerza
+
+let running=false, cdActive=false, rafId=null;
+let lastCollisionFrame=0; // evitar doble impulso por frame
+
+// Jugadores (datos)
+const P = [
+  { x:0, y:0, vx:0, vy:0, col:'#c03020', belt:'#d4a017', skin:'#e8a060', name:'SUMO ROJO', cls:'p1' },
+  { x:0, y:0, vx:0, vy:0, col:'#1a40b0', belt:'#c85000', skin:'#e8a060', name:'SUMO AZUL', cls:'p2' }
+];
+
+function resetPos(){
+  // Posiciones asimétricas: rojo izquierda, azul derecha
+  P[0].x = CX - RING_R*0.4;
+  P[0].y = CY;
+  P[1].x = CX + RING_R*0.4;
+  P[1].y = CY;
+  P[0].vx = 0; P[0].vy = 0;
+  P[1].vx = 0; P[1].vy = 0;
+}
+
+// ======================== NUEVA FÍSICA DE CHOQUE ========================
+// Se aplica impulso total + transferencia de momento. 
+// Si un luchador se mueve rápido hacia el otro, el impacto lo proyecta hacia afuera.
+function applyCollision(A, B, radius) {
+  const dx = B.x - A.x;
+  const dy = B.y - A.y;
+  const dist = Math.hypot(dx, dy);
+  const minDist = radius * 2.02;
+  
+  if (dist >= minDist) return false;
+  
+  // vector normal unitario (de A hacia B)
+  const nx = dx / (dist + 1e-9);
+  const ny = dy / (dist + 1e-9);
+  
+  // Separación geométrica para evitar penetración (sin empuje extra)
+  const overlap = minDist - dist;
+  const correction = overlap * 0.55;
+  A.x -= nx * correction;
+  A.y -= ny * correction;
+  B.x += nx * correction;
+  B.y += ny * correction;
+  
+  // Velocidades relativas a lo largo de la normal
+  const vrel_n = (B.vx - A.vx) * nx + (B.vy - A.vy) * ny;
+  
+  // Si se están alejando, no aplicar impulso extra
+  if (vrel_n > 0) return true;
+  
+  // --- IMPULSO PRINCIPAL (colisión inelástica con factor de violencia) ---
+  // Coeficiente de restitución bajo (choque duro, absorben pero empujan)
+  const e = 0.32;   // restitución baja => pegajoso pero con impulso lateral
+  // Masa igual para ambos
+  const mass = 1.0;
+  const reducedMass = 0.5;
+  
+  // Impulso escalar (sin factor extra)
+  let j = -(1 + e) * vrel_n * reducedMass;
+  
+  // FACTOR CLAVE: La velocidad relativa determina qué tan fuerte es el empuje.
+  // Si un luchador carga con mucha velocidad, esa energía se transfiere al oponente.
+  // Además, el que lleva mayor velocidad absoluta domina el choque.
+  const speedA = Math.hypot(A.vx, A.vy);
+  const speedB = Math.hypot(B.vx, B.vy);
+  
+  // Bonus de "embestida": si uno es significativamente más rápido, aumenta el impulso hacia el otro.
+  let dominioBonus = 1.0;
+  if (speedA > speedB + 1.2) dominioBonus = 1.45;   // el rojo arrolla
+  else if (speedB > speedA + 1.2) dominioBonus = 1.45; // el azul arrolla
+  else dominioBonus = 1.0;
+  
+  // Factor extra basado en la velocidad relativa (entre más rápido choquen, más violento)
+  const relSpeed = Math.abs(vrel_n);
+  let violence = 1.0 + Math.min(2.0, relSpeed * 0.75);
+  
+  j = j * BOUNCE_FACTOR * violence * dominioBonus;
+  
+  // Aplicar impulso a ambos (A recibe impulso negativo, B positivo)
+  A.vx -= j * nx * (1/mass);
+  A.vy -= j * ny * (1/mass);
+  B.vx += j * nx * (1/mass);
+  B.vy += j * ny * (1/mass);
+  
+  // --- EFECTO ADICIONAL: ROZAMIENTO DE CHOQUE Y PEQUEÑA PERDIDA DE ENERGÍA TANGENCIAL ---
+  // para que no reboten infinito, pero el que recibe el golpe sale despedido.
+  // Si la velocidad relativa es alta, el más lento retrocede con gran impulso.
+  if (relSpeed > 1.2) {
+    // El que tenía menos velocidad en la dirección del choque recibe un extra
+    const vA_n = A.vx * nx + A.vy * ny;
+    const vB_n = B.vx * nx + B.vy * ny;
+    if (vA_n < vB_n && vA_n < -0.5) {
+      // A está siendo arrollado por B
+      B.vx += nx * relSpeed * 0.35;
+      B.vy += ny * relSpeed * 0.35;
+    } else if (vB_n > vA_n && vB_n < -0.5) {
+      A.vx -= nx * relSpeed * 0.35;
+      A.vy -= ny * relSpeed * 0.35;
+    }
+  }
+  
+  // Evitar velocidades absurdamente altas (limitador)
+  const MAX_SPEED = 9.5;
+  [A, B].forEach(p => {
+    let spd = Math.hypot(p.vx, p.vy);
+    if (spd > MAX_SPEED) {
+      p.vx = (p.vx / spd) * MAX_SPEED;
+      p.vy = (p.vy / spd) * MAX_SPEED;
+    }
+  });
+  
+  return true;
+}
+
+// Detectar si algún luchador salió del círculo (incluye medio cuerpo fuera)
+function checkRingOut() {
+  for (let i = 0; i < P.length; i++) {
+    const p = P[i];
+    const distToCenter = Math.hypot(p.x - CX, p.y - CY);
+    // Salida si el borde del luchador toca o sobrepasa el ring (radio - margen)
+    const exitThreshold = RING_R - PR * 0.72;
+    if (distToCenter > exitThreshold && running) {
+      running = false;
+      const winnerIdx = i === 0 ? 1 : 0;
+      setTimeout(() => showDefeat(winnerIdx), 80);
+      return true;
+    }
+  }
+  return false;
+}
+
+// Actualización por frame (física + controles)
+function updatePhysics() {
+  if (!running || cdActive) return;
+  
+  // 1. Aplicar aceleración por teclado y fricción
+  for (let i = 0; i < P.length; i++) {
+    const pl = P[i];
+    const inp = getInput(i);
+    let ax = (inp.r ? 1 : 0) - (inp.l ? 1 : 0);
+    let ay = (inp.d ? 1 : 0) - (inp.u ? 1 : 0);
+    if (ax !== 0 || ay !== 0) {
+      const len = Math.hypot(ax, ay);
+      ax /= len;
+      ay /= len;
+      pl.vx += ax * ACCEL;
+      pl.vy += ay * ACCEL;
+    }
+    // Rozamiento y límite suave de velocidad máxima
+    pl.vx *= FRIC;
+    pl.vy *= FRIC;
+    const maxV = 7.0;
+    if (Math.abs(pl.vx) > maxV) pl.vx = (pl.vx > 0 ? maxV : -maxV);
+    if (Math.abs(pl.vy) > maxV) pl.vy = (pl.vy > 0 ? maxV : -maxV);
+    
+    // Integración posición
+    pl.x += pl.vx;
+    pl.y += pl.vy;
+  }
+  
+  // 2. Resolver colisiones múltiples (hasta 2 iteraciones para evitar penetración profunda)
+  for (let iter = 0; iter < 2; iter++) {
+    applyCollision(P[0], P[1], PR);
+  }
+  
+  // 3. Pequeña restricción para que nunca se salgan físicamente del canvas (rebote suave con bordes imaginarios? No, solo límite interno)
+  // pero evitar que atraviesen el círculo por empujones extremos: limitar posición dentro del ring + 10% extra
+  for (let p of P) {
+    const distToCenter = Math.hypot(p.x - CX, p.y - CY);
+    const maxAllowed = RING_R - PR * 0.68;
+    if (distToCenter > maxAllowed && running) {
+      // empujar hacia adentro suavemente pero manteniendo la pelea
+      const angle = Math.atan2(p.y - CY, p.x - CX);
+      const targetX = CX + Math.cos(angle) * (maxAllowed - 1);
+      const targetY = CY + Math.sin(angle) * (maxAllowed - 1);
+      p.x = targetX;
+      p.y = targetY;
+      // reducir un poco la velocidad radial para no salir rebotado infinito
+      const radialV = (p.vx * Math.cos(angle) + p.vy * Math.sin(angle));
+      if (radialV > 0) {
+        p.vx -= radialV * Math.cos(angle) * 0.4;
+        p.vy -= radialV * Math.sin(angle) * 0.4;
+      }
+    }
+  }
+  
+  // 4. Verificar si alguien cayó fuera
+  checkRingOut();
+}
+
+// ======================== DIBUJO ARTÍSTICO ========================
+function drawRing() {
+  ctx.beginPath(); ctx.arc(CX, CY, RING_R, 0, Math.PI * 2);
+  ctx.fillStyle = '#f5e2b0'; ctx.fill();
+  // Círculo interior decorativo
+  ctx.beginPath(); ctx.arc(CX, CY, RING_R - 4, 0, Math.PI * 2);
+  ctx.strokeStyle = '#c27e3a'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.beginPath(); ctx.arc(CX, CY, RING_R * 0.92, 0, Math.PI * 2);
+  ctx.strokeStyle = '#b57a2e'; ctx.lineWidth = 1.8; ctx.setLineDash([8, 12]); ctx.stroke();
+  ctx.setLineDash([]);
+  // Línea central ritual
+  ctx.beginPath(); ctx.moveTo(CX - RING_R * 0.2, CY); ctx.lineTo(CX + RING_R * 0.2, CY);
+  ctx.strokeStyle = '#9c5a1c'; ctx.lineWidth = 4; ctx.stroke();
+  // borde exterior
+  ctx.beginPath(); ctx.arc(CX, CY, RING_R, 0, Math.PI * 2);
+  ctx.strokeStyle = '#6b3c0c'; ctx.lineWidth = 8; ctx.stroke();
+}
+
+function drawSumo(p, color, belt, skin) {
+  const x = p.x, y = p.y, r = PR;
+  ctx.save();
+  ctx.shadowBlur = 0;
+  // sombra
+  ctx.beginPath(); ctx.ellipse(x, y + r * 1.05, r * 1.1, r * 0.28, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fill();
+  // piernas
+  ctx.beginPath(); ctx.ellipse(x - r * 0.3, y + r * 0.92, r * 0.31, r * 0.42, -0.15, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x - r * 0.34, y + r * 1.22, r * 0.28, r * 0.14, 0.2, 0, Math.PI * 2); ctx.fillStyle = '#2a1a0a'; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + r * 0.3, y + r * 0.92, r * 0.31, r * 0.42, 0.15, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + r * 0.34, y + r * 1.22, r * 0.28, r * 0.14, -0.2, 0, Math.PI * 2); ctx.fillStyle = '#2a1a0a'; ctx.fill();
+  // torso
+  ctx.beginPath(); ctx.ellipse(x, y + r * 0.1, r * 1.08, r * 0.98, 0, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x, y + r * 0.6, r * 0.84, r * 0.5, 0, 0, Math.PI * 2); ctx.fillStyle = skin; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x - r * 0.28, y - r * 0.22, r * 0.44, r * 0.38, -0.2, 0, Math.PI * 2); ctx.fillStyle = skin; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + r * 0.28, y - r * 0.22, r * 0.44, r * 0.38, 0.2, 0, Math.PI * 2); ctx.fillStyle = skin; ctx.fill();
+  // mawashi
+  ctx.beginPath(); ctx.ellipse(x, y + r * 0.28, r * 0.96, r * 0.3, 0, 0, Math.PI * 2); ctx.fillStyle = belt; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x - r * 0.22, y + r * 0.1); ctx.quadraticCurveTo(x, y + r * 0.7, x + r * 0.22, y + r * 0.1); ctx.fillStyle = belt; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x, y + r * 0.14, r * 0.18, r * 0.13, 0, 0, Math.PI * 2); ctx.fillStyle = belt; ctx.fill();
+  // brazos
+  ctx.beginPath(); ctx.ellipse(x - r * 1.0, y - r * 0.1, r * 0.3, r * 0.52, -0.4, 0, Math.PI * 2); ctx.fillStyle = skin; ctx.fill();
+  ctx.beginPath(); ctx.arc(x - r * 1.08, y + r * 0.32, r * 0.2, 0, Math.PI * 2); ctx.fillStyle = skin; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + r * 1.0, y - r * 0.1, r * 0.3, r * 0.52, 0.4, 0, Math.PI * 2); ctx.fillStyle = skin; ctx.fill();
+  ctx.beginPath(); ctx.arc(x + r * 1.08, y + r * 0.32, r * 0.2, 0, Math.PI * 2); ctx.fillStyle = skin; ctx.fill();
+  // cabeza
+  const hx = x, hy = y - r * 1.0;
+  ctx.beginPath(); ctx.ellipse(hx, hy, r * 0.58, r * 0.56, 0, 0, Math.PI * 2); ctx.fillStyle = skin; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(hx, hy + r * 0.35, r * 0.42, r * 0.22, 0, 0, Math.PI * 2); ctx.fillStyle = skin; ctx.fill();
+  // ojos agresivos
+  ctx.fillStyle = '#1e0a00';
+  ctx.beginPath(); ctx.ellipse(hx - r * 0.22, hy - r * 0.04, r * 0.1, r * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(hx + r * 0.22, hy - r * 0.04, r * 0.1, r * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'white';
+  ctx.beginPath(); ctx.arc(hx - r * 0.18, hy - r * 0.07, r * 0.03, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(hx + r * 0.26, hy - r * 0.07, r * 0.03, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#c06030';
+  ctx.beginPath(); ctx.ellipse(hx, hy + r * 0.1, r * 0.11, r * 0.09, 0, 0, Math.PI * 2); ctx.fill();
+  // boca feroz
+  ctx.beginPath(); ctx.moveTo(hx - r * 0.18, hy + r * 0.24); ctx.quadraticCurveTo(hx, hy + r * 0.34, hx + r * 0.18, hy + r * 0.24); ctx.lineWidth = 2.5; ctx.strokeStyle = '#6b2a10'; ctx.stroke();
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawRing();
+  drawSumo(P[0], P[0].col, P[0].belt, P[0].skin);
+  drawSumo(P[1], P[1].col, P[1].belt, P[1].skin);
+  
+  // Efecto de "velocidad" (estelas opcionales)
+  for (let i=0;i<P.length;i++) {
+    let spd = Math.hypot(P[i].vx, P[i].vy);
+    if(spd > 1.2 && running) {
+      ctx.beginPath(); ctx.arc(P[i].x, P[i].y, PR*0.6, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,200,100,${Math.min(0.35,spd*0.05)})`;
+      ctx.fill();
+    }
+  }
+}
+
+// ======================== LOOP PRINCIPAL ========================
+function gameLoop() {
+  updatePhysics();
+  draw();
+  rafId = requestAnimationFrame(gameLoop);
+}
+
+// ======================== UI Y TRANSICIONES ========================
+function showScreen(id) {
+  ['menu-screen','game-screen','defeat-screen'].forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
+}
+const annEl = document.getElementById('ann');
+let annT;
+function showAnn(text, dur) {
+  clearTimeout(annT);
+  annEl.textContent = text;
+  annEl.classList.add('show');
+  annT = setTimeout(() => annEl.classList.remove('show'), dur);
+}
+
+function startCountdown(callback) {
+  cdActive = true;
+  const el = document.getElementById('cd');
+  let n = 3;
+  el.textContent = n;
+  const iv = setInterval(() => {
+    n--;
+    if (n <= 0) {
+      clearInterval(iv);
+      el.textContent = '🏁';
+      cdActive = false;
+      running = true;
+      showAnn('¡HAKKEYOI!', 800);
+      callback();
+    } else {
+      el.textContent = n;
+      showAnn(`${n}`, 300);
+    }
+  }, 1000);
+}
+
+function showDefeat(winnerIdx) {
+  if (rafId) cancelAnimationFrame(rafId);
+  running = false;
+  const winner = P[winnerIdx];
+  document.getElementById('wname').innerHTML = `${winner.name} 💪`;
+  document.getElementById('wname').className = 'wname ' + winner.cls;
+  showScreen('defeat-screen');
+}
+
+function startGame() {
+  if (rafId) cancelAnimationFrame(rafId);
+  resize();
+  resetPos();
+  running = false;
+  cdActive = false;
+  document.getElementById('cd').textContent = '3';
+  showScreen('game-screen');
+  // Reiniciar el loop de animación
+  rafId = requestAnimationFrame(gameLoop);
+  startCountdown(() => {});
+}
+
+// Eventos UI
+document.getElementById('btn-start').addEventListener('click', startGame);
+document.getElementById('btn-restart').addEventListener('click', startGame);
+document.getElementById('btn-menu').addEventListener('click', () => {
+  if (rafId) cancelAnimationFrame(rafId);
+  running = false;
+  showScreen('menu-screen');
+  // mantener animación mínima en menu no necesaria, pero reiniciamos solo al jugar
+});
+showScreen('menu-screen');
+</script>
+</body>
+</html>
