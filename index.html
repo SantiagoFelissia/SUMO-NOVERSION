@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>SUMO - Choques Definitivos</title>
+<title>SUMO PELEA</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
-body { background:#1a0a00; font-family:'Segoe UI',Arial,sans-serif; color:#fff; height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; touch-action:pan-x pan-y; }
+body { background:hsl(23, 100%, 5%); font-family:'Segoe UI',Arial,sans-serif; color:#fff; height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; touch-action:pan-x pan-y; }
 .screen { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; text-align:center; padding:20px; background:#1a0a00; z-index:10; }
 .screen.hidden { display:none; }
-h1 { font-size:clamp(3rem,12vw,6rem); color:#f5c518; text-shadow:4px 4px 0 #8B4513; letter-spacing:2px; }
-h2 { font-size:clamp(1.5rem,6vw,2.5rem); color:#f5c518; }
+h1 { font-size:clamp(3rem,12vw,6rem); color:#ecd713; text-shadow:4px 4px 0 #3f3025; letter-spacing:2px; }
+h2 { font-size:clamp(1.5rem,6vw,2.5rem); color:#221f15; }
 p  { color:#c9a84c; line-height:1.8; font-size:clamp(.85rem,2.5vw,1rem); max-width:300px; margin:0 auto; }
 button { font-size:clamp(1rem,4vw,1.3rem); padding:12px 36px; border:none; border-radius:40px; cursor:pointer; font-weight:bold; transition:0.05s linear; }
 .btn-gold  { background:#f5c518; color:#3a1a00; box-shadow:0 5px 0 #8B4513; }
-.btn-green { background:#4caf50; color:#fff;    box-shadow:0 5px 0 #1b5e20; }
+.btn-green { background:#046607fa; color:#fff;    box-shadow:0 5px 0 #1b5e20; }
 button:active { transform:translateY(3px); box-shadow:none; }
 #game-screen { gap:6px; background:#1a0a00; }
 #hud { display:flex; justify-content:space-between; align-items:center; width:100%; max-width:500px; font-weight:bold; font-size:clamp(1rem,3.5vw,1.2rem); background:rgba(0,0,0,0.4); padding:6px 15px; border-radius:60px; backdrop-filter:blur(4px); }
@@ -38,22 +38,23 @@ canvas { display:block; border-radius:50%; box-shadow:0 0 0 7px #8B4513,0 0 0 13
 <div id="ann"></div>
 
 <div id="menu-screen" class="screen">
-  <h1>⚡ SUMO ⚡</h1>
-  <p><b style="color:#e84040">J1</b> — <b>W A S D</b> &nbsp;|&nbsp; <b style="color:#4488ff">J2</b> — <b>⬆️⬅️⬇️➡️</b><br><br>💥 <b>Empuja FUERA del círculo</b> 💥<br>📌 <b style="color:#f5c518">Choque frontal:</b> El más rápido expulsa al otro<br>🎯 ¡Velocidad + impacto = victoria!</p>
-  <button class="btn-gold" id="btn-start">🔰 ¡DO HYO! 🔰</button>
-  <div class="footer-tip">✦ Tácticas: ataca de costado o con embestida ✦</div>
+  <h1> SUMO-TACHI 
+  </h1>
+  <p><b style="color:#e84040">Jugador 1</b> — <b>W A S D</b> &nbsp;|&nbsp; <b style="color:#4488ff">Jugador 2</b> — <b>⬆️⬅️⬇️➡️</b><br><br><b>Empuja FUERA del círculo</b> <br> <b style="color:#ff4800">Choque frontal:</b> El más rápido saca al otro<br>VELOCIDAD Y FUERZA</p>
+  <button class="btn-gold" id="btn-start">Jugar</button>
+  <div class="footer-tip">✦ Tácticas: ataca antes, ataca rapido ✦</div>
 </div>
 
 <div id="game-screen" class="screen hidden">
   <div id="hud">
-    <span class="p1n">🔴 SUMO ROJO</span>
+    <span class="p1n">SUMO ROJO</span>
     <span class="mid" id="cd">3</span>
-    <span class="p2n">SUMO AZUL 🔵</span>
+    <span class="p2n">SUMO AZUL </span>
   </div>
   <canvas id="c"></canvas>
   <div id="mc">
     <div>
-      <div class="dl" style="color:#e84040">⚡ ROJO</div>
+      <div class="dl" style="color:#e84040">ROJO</div>
       <div class="dpad">
         <div class="db x"></div><div class="db" data-p="1" data-d="u">▲</div><div class="db x"></div>
         <div class="db" data-p="1" data-d="l">◀</div><div class="db x"></div><div class="db" data-p="1" data-d="r">▶</div>
@@ -61,7 +62,7 @@ canvas { display:block; border-radius:50%; box-shadow:0 0 0 7px #8B4513,0 0 0 13
       </div>
     </div>
     <div>
-      <div class="dl" style="color:#4488ff">💠 AZUL</div>
+      <div class="dl" style="color:#4488ff">AZUL</div>
       <div class="dpad">
         <div class="db x"></div><div class="db" data-p="2" data-d="u">▲</div><div class="db x"></div>
         <div class="db" data-p="2" data-d="l">◀</div><div class="db x"></div><div class="db" data-p="2" data-d="r">▶</div>
@@ -72,12 +73,12 @@ canvas { display:block; border-radius:50%; box-shadow:0 0 0 7px #8B4513,0 0 0 13
 </div>
 
 <div id="defeat-screen" class="screen hidden">
-  <div style="font-size:clamp(3rem,12vw,5rem)">🏆🎊</div>
-  <h2>¡VICTORIA!</h2>
+  <div style="font-size:clamp(3rem,12vw,5rem)"></div>
+  <h2>GANASTE</h2>
   <div class="wname" id="wname">Jugador 1</div>
   <div class="br">
-    <button class="btn-green" id="btn-restart">💢 REVANCHA 💢</button>
-    <button class="btn-gold"  id="btn-menu">🏮 MENÚ</button>
+    <button class="btn-green" id="btn-restart">REVANCHA </button>
+    <button class="btn-gold"  id="btn-menu"> MENÚ</button>
   </div>
 </div>
 
@@ -439,7 +440,7 @@ function startCountdown(callback) {
       el.textContent = '🏁';
       cdActive = false;
       running = true;
-      showAnn('¡HAKKEYOI!', 800);
+      showAnn('PELEA', 800);
       callback();
     } else {
       el.textContent = n;
